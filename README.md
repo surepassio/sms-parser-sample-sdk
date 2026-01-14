@@ -64,6 +64,10 @@ We provide two environments for different stages of development:
 |-----------|------|----------|-------------|---------------|
 | `webhook_url` | String | ❌ Optional | You can get data in your own webhook URL | None |
 
+> **Important:** 
+> - If you **pass `webhook_url`**: API returns only status code `200`, data will be `null`. Parsed SMS data will be sent to your webhook URL.
+> - If you **don't pass `webhook_url`**: Parsed SMS data will be available in the SDK callback and can be retrieved using `getSMSParsingData()`.
+
 ---
 
 ### Step 2: Configure Repository Access
@@ -239,7 +243,15 @@ val smsParserManager = SmsParserManager.getInstance()
 smsParserManager.parseSms(smsContent, object : SmsParserCallback<SmsData> {
     override fun onSuccess(data: SmsData) {
         // SMS parsed successfully
-        // Access: data.sender, data.message, data.category
+        // Note: data will be null if webhook_url was provided during initialization
+        // In that case, parsed data will be sent to your webhook URL
+        
+        if (data != null) {
+            // Access parsed SMS data
+            // data.sender, data.message, data.category, etc.
+        } else {
+            // Data sent to webhook_url (status code 200 received)
+        }
     }
     
     override fun onError(exception: Exception, message: String) {
@@ -252,25 +264,35 @@ smsParserManager.parseSms(smsContent, object : SmsParserCallback<SmsData> {
 })
 ```
 
-**SmsData Properties:**
+**SmsData Properties (when webhook_url is not used):**
 - `sender` - SMS sender information
 - `message` - Parsed message content
 - `category` - Message category (if available)
+- Additional parsed fields based on SMS content
 
 ---
 
-### 4. Retrieve Sms Parsing Data
+### 4. Retrieve SMS Parsing Data
 
 Get SMS Parsing data after SDK initialization:
 
 ```kotlin
 val data = smsParserManager.getSMSParsingData()
 if (data != null) {
-    // Access: data
+    // Access parsed SMS data
+    // Note: This will only contain data if webhook_url was NOT provided
+    // If webhook_url was provided, this will return null as data is sent to webhook
 } else {
-    // Data not available yet (SDK still initializing)
+    // Data not available yet (SDK still initializing or sent to webhook)
 }
 ```
+
+**Data Retrieval Behavior:**
+
+| Scenario | `getSMSParsingData()` Result | Where Data Goes |
+|----------|------------------------------|-----------------|
+| **No webhook_url** | Returns parsed SMS data | Available in SDK |
+| **With webhook_url** | Returns `null` | Sent to your webhook URL |
 
 ---
 
